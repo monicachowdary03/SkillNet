@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ask a Question - SkillNet</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .cat-card {
+      border: 2px solid var(--border, #e5e7eb);
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      background: var(--bg-card, #fff);
+      user-select: none;
+    }
+    .cat-card:hover {
+      border-color: #6366f1;
+      background: #f5f3ff;
+      transform: translateY(-2px);
+    }
+    .cat-card.selected {
+      border-color: #6366f1;
+      background: #ede9fe;
+      box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+    }
+    .cat-card .cat-icon { font-size: 24px; margin-bottom: 4px; }
+    .cat-card .cat-name { font-size: 12px; font-weight: 600; color: var(--navy, #1e3a5f); }
+    .cat-search {
+      display: flex; align-items: center; gap: 8px;
+      border: 1.5px solid var(--border,#e5e7eb); border-radius: 8px;
+      padding: 8px 12px; margin-bottom: 10px;
+      background: var(--bg-card,#fff);
+    }
+    .cat-search input {
+      border: none; outline: none; background: transparent;
+      font-size: 13px; width: 100%;
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/" class="navbar-brand">
+    <img src="/images/logo.jpeg" alt="SkillNet"><span>SkillNet</span>
+  </a>
+  <div class="navbar-links" id="nav-user-links"></div>
+</nav>
+
+<div style="max-width:860px;margin:32px auto;padding:0 16px;">
+  <h1 style="font-family:var(--font-display);font-size:26px;margin-bottom:4px;">Ask a Question</h1>
+  <p style="color:var(--text-muted);font-size:14px;margin-bottom:24px;">Get help from the SkillNet community. Be specific and include relevant details.</p>
+
+  <div id="error-msg" class="alert alert-error" style="display:none;margin-bottom:16px;"></div>
+
+  <!-- Question Details -->
+  <div class="form-section">
+    <div class="form-section-title">📝 Question Details</div>
+    <div class="form-group">
+      <label class="form-label">Title *</label>
+      <input class="form-input" type="text" id="title" placeholder="What is your question? Be specific and clear." maxlength="200">
+      <div id="title-counter" style="font-size:11px;color:var(--text-muted);text-align:right;margin-top:2px;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description *</label>
+      <textarea class="form-textarea" id="content" rows="6" placeholder="Describe your problem in detail. Include what you've already tried."></textarea>
+    </div>
+  </div>
+
+  <!-- Code + Behavior -->
+  <div class="form-section">
+    <div class="form-section-title">💻 Code & Behavior (optional)</div>
+    <div class="form-group">
+      <label class="form-label">Code Snippet</label>
+      <textarea class="form-textarea" id="codeSnippet" rows="4" placeholder="Paste your code here if applicable..." style="font-family:var(--font-mono);font-size:13px;"></textarea>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label class="form-label">Expected Behavior</label>
+        <textarea class="form-textarea" id="expectedBehavior" rows="2" placeholder="What did you expect to happen?"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Actual Behavior</label>
+        <textarea class="form-textarea" id="actualBehavior" rows="2" placeholder="What actually happened?"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category picker -->
+  <div class="form-section">
+    <div class="form-section-title">📂 Choose a Category *</div>
+
+    <div class="cat-search">
+      <span>🔍</span>
+      <input type="text" id="cat-search" placeholder="Search categories..." oninput="filterCats(this.value)">
+    </div>
+
+    <div class="cat-grid" id="cat-grid">
+      <div style="color:var(--text-muted);font-size:13px;">Loading categories...</div>
+    </div>
+
+    <input type="hidden" id="category" value="">
+    <div id="cat-selected-label" style="margin-top:10px;font-size:13px;color:#6366f1;font-weight:600;display:none;">
+      ✅ Selected: <span id="cat-selected-text"></span>
+    </div>
+  </div>
+
+  <!-- Tags -->
+  <div class="form-section">
+    <div class="form-section-title">🏷️ Tags & Subject</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label class="form-label">Subject <span style="color:var(--text-muted);font-size:12px;">(optional)</span></label>
+        <input class="form-input" type="text" id="subject" placeholder="e.g. React Hooks, SQL Joins...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tags <span style="color:var(--text-muted);font-size:12px;">(comma separated, up to 5)</span></label>
+        <input class="form-input" type="text" id="tags" placeholder="javascript, async, promises">
+      </div>
+    </div>
+    <div id="tag-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+  </div>
+
+  <div style="display:flex;gap:12px;justify-content:flex-end;">
+    <a href="/" class="btn" style="background:var(--cream,#f5f1e8);">Cancel</a>
+    <button class="btn btn-primary" onclick="submitQuestion()" id="submit-btn">Post Question</button>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+const user = API.getUser();
+if (!user) window.location.href = '/login';
+
+let allCategories = [];
+
+// Load categories from API
+async function loadCategories() {
+  try {
+    const cats = await API.get('/questions/meta/categories');
+    // Merge with full list from server
+    allCategories = cats.length > 0 ? cats : [];
+    renderCats(allCategories);
+  } catch(e) {
+    // Fallback list
+    allCategories = [
+      { _id:'Web Development',      icon:'🌐' }, { _id:'Database',           icon:'🗄️' },
+      { _id:'Algorithms',           icon:'🧮' }, { _id:'Data Structures',    icon:'🌲' },
+      { _id:'Machine Learning',     icon:'🤖' }, { _id:'Mobile Development', icon:'📱' },
+      { _id:'DevOps',               icon:'⚙️' }, { _id:'Security',           icon:'🔐' },
+      { _id:'Mathematics',          icon:'📐' }, { _id:'Computer Networks',  icon:'🔗' },
+      { _id:'Operating Systems',    icon:'💻' }, { _id:'Software Engineering',icon:'🏗️'},
+      { _id:'Cloud Computing',      icon:'☁️' }, { _id:'Python',             icon:'🐍' },
+      { _id:'Java',                 icon:'☕' }, { _id:'C / C++',           icon:'⚡' },
+      { _id:'Data Science',         icon:'📊' }, { _id:'Blockchain',         icon:'🔗' },
+      { _id:'Game Development',     icon:'🎮' }, { _id:'UI/UX Design',       icon:'🎨' },
+      { _id:'Interview Prep',       icon:'📋' }, { _id:'Open Source',        icon:'🌍' },
+      { _id:'General',              icon:'💬' },
+    ];
+    renderCats(allCategories);
+  }
+}
+
+function renderCats(list) {
+  const grid = document.getElementById('cat-grid');
+  if (!list || list.length === 0) {
+    grid.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">No categories found</div>';
+    return;
+  }
+  grid.innerHTML = list.map(c => `
+    <div class="cat-card" id="cat-${c._id.replace(/[^a-z0-9]/gi,'_')}" onclick="selectCat('${escHtml(c._id)}', '${escHtml(c.icon||'📂')}')">
+      <div class="cat-icon">${c.icon || '📂'}</div>
+      <div class="cat-name">${escHtml(c._id)}</div>
+      ${c.count ? `<div style="font-size:10px;color:var(--text-muted);">${c.count} questions</div>` : ''}
+    </div>`).join('');
+}
+
+function filterCats(val) {
+  const filtered = allCategories.filter(c =>
+    c._id.toLowerCase().includes(val.toLowerCase())
+  );
+  renderCats(filtered);
+  // Re-highlight selected
+  const sel = document.getElementById('category').value;
+  if (sel) {
+    const el = document.getElementById('cat-' + sel.replace(/[^a-z0-9]/gi,'_'));
+    if (el) el.classList.add('selected');
+  }
+}
+
+function selectCat(name, icon) {
+  // Deselect all
+  document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+  // Select clicked
+  const el = document.getElementById('cat-' + name.replace(/[^a-z0-9]/gi,'_'));
+  if (el) el.classList.add('selected');
+  // Store value
+  document.getElementById('category').value = name;
+  // Show label
+  document.getElementById('cat-selected-text').textContent = icon + ' ' + name;
+  document.getElementById('cat-selected-label').style.display = 'block';
+}
+
+// Tag preview
+document.getElementById('tags').addEventListener('input', function() {
+  const tags = this.value.split(',').map(t => t.trim()).filter(Boolean).slice(0, 5);
+  document.getElementById('tag-preview').innerHTML = tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('');
+});
+
+// Title counter
+document.getElementById('title').addEventListener('input', function() {
+  document.getElementById('title-counter').textContent = `${this.value.length}/200`;
+});
+
+async function submitQuestion() {
+  const title    = document.getElementById('title').value.trim();
+  const content  = document.getElementById('content').value.trim();
+  const category = document.getElementById('category').value || 'General';
+  const tags     = document.getElementById('tags').value;
+  const subject  = document.getElementById('subject').value.trim();
+  const codeSnippet       = document.getElementById('codeSnippet').value.trim();
+  const expectedBehavior  = document.getElementById('expectedBehavior').value.trim();
+  const actualBehavior    = document.getElementById('actualBehavior').value.trim();
+  const errEl  = document.getElementById('error-msg');
+  const btn    = document.getElementById('submit-btn');
+
+  errEl.style.display = 'none';
+
+  if (!title)    { errEl.textContent = '⚠️ Please provide a title';           errEl.style.display = 'block'; return; }
+  if (!content)  { errEl.textContent = '⚠️ Please describe your problem';     errEl.style.display = 'block'; return; }
+  if (!category) { errEl.textContent = '⚠️ Please select a category';        errEl.style.display = 'block'; return; }
+
+  btn.textContent = 'Posting...'; btn.disabled = true;
+
+  try {
+    const q = await API.post('/questions', { title, content, tags, category, subject, codeSnippet, expectedBehavior, actualBehavior });
+    window.location.href = `/question/${q._id}`;
+  } catch (err) {
+    errEl.textContent = '⚠️ ' + err.message;
+    errEl.style.display = 'block';
+    btn.textContent = 'Post Question'; btn.disabled = false;
+  }
+}
+
+loadCategories();
+</script>
+</body>
+</html>

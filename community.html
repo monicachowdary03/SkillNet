@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Community - SkillNet</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .member-card {
+      background: var(--bg-card, #fff);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 12px;
+      padding: 18px;
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s;
+      text-decoration: none;
+      display: block;
+      color: inherit;
+    }
+    .member-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    }
+    .avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: linear-gradient(135deg, #4f46e5, #0891b2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .badge-pill {
+      font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 10px; color: #fff;
+    }
+    .filter-bar {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-bottom: 16px; align-items: center;
+    }
+    .filter-btn {
+      padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border,#e5e7eb);
+      background: var(--bg-card,#fff); cursor: pointer; font-size: 13px;
+      font-weight: 500; color: var(--text-secondary,#4b5563); transition: .2s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      background: #6366f1; color: #fff; border-color: #6366f1;
+    }
+    .search-box {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg-card,#fff); border: 1.5px solid var(--border,#e5e7eb);
+      border-radius: 10px; padding: 8px 14px; flex: 1; min-width: 200px;
+    }
+    .search-box input {
+      border: none; outline: none; background: transparent;
+      font-size: 14px; color: var(--text-primary,#111); width: 100%;
+    }
+    .stats-row {
+      display: flex; gap: 16px; font-size: 12px;
+      color: var(--text-muted,#6b7280);
+      border-top: 1px solid var(--border,#e5e7eb); padding-top: 10px; margin-top: 10px;
+    }
+    .empty-state {
+      grid-column: 1/-1; text-align: center; padding: 60px 20px;
+      color: var(--text-muted,#6b7280);
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar-brand">
+    <img src="/images/logo.jpeg" alt="SkillNet"><span>SkillNet</span>
+  </a>
+  <div class="navbar-links" id="nav-user-links"></div>
+</nav>
+
+<div class="page-layout-wide">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">Navigation</div>
+      <a href="/"          class="sidebar-link"><span class="icon">🏠</span> Home</a>
+      <a href="/community" class="sidebar-link active"><span class="icon">👥</span> Community</a>
+      <a href="/ask"       class="sidebar-link"><span class="icon">✏️</span> Ask Question</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">Sort By</div>
+      <a href="#" class="sidebar-link active" id="sort-reputation" onclick="setSort('reputation',event)"><span class="icon">⭐</span> Top Reputation</a>
+      <a href="#" class="sidebar-link"        id="sort-newest"     onclick="setSort('newest',event)"><span class="icon">🆕</span> Newest Members</a>
+      <a href="#" class="sidebar-link"        id="sort-questions"  onclick="setSort('questions',event)"><span class="icon">❓</span> Most Questions</a>
+      <a href="#" class="sidebar-link"        id="sort-answers"    onclick="setSort('answers',event)"><span class="icon">💬</span> Most Answers</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">Filter by Expertise</div>
+      <a href="#" class="sidebar-link active" onclick="setExpertise('',event)">🔵 All Levels</a>
+      <a href="#" class="sidebar-link" onclick="setExpertise('beginner',event)">🟢 Beginner</a>
+      <a href="#" class="sidebar-link" onclick="setExpertise('intermediate',event)">🟡 Intermediate</a>
+      <a href="#" class="sidebar-link" onclick="setExpertise('advanced',event)">🔴 Advanced</a>
+      <a href="#" class="sidebar-link" onclick="setExpertise('expert',event)">🟣 Expert</a>
+    </div>
+
+    <div class="sidebar-section" id="community-stats-box">
+      <div class="sidebar-title">Community Stats</div>
+      <div id="community-stats" style="font-size:13px;color:var(--text-muted);">Loading...</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="page-header">
+      <h1 class="page-title">👥 Community Members</h1>
+      <span id="member-count" style="font-size:14px;color:var(--text-muted);"></span>
+    </div>
+
+    <!-- Search + Filter bar -->
+    <div class="filter-bar">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" id="search-input" placeholder="Search by name, skill, or interest...">
+      </div>
+      <button class="filter-btn active" id="exp-all"          onclick="setExpertise('',event)">All</button>
+      <button class="filter-btn"        id="exp-beginner"     onclick="setExpertise('beginner',event)">🟢 Beginner</button>
+      <button class="filter-btn"        id="exp-intermediate" onclick="setExpertise('intermediate',event)">🟡 Intermediate</button>
+      <button class="filter-btn"        id="exp-advanced"     onclick="setExpertise('advanced',event)">🔴 Advanced</button>
+      <button class="filter-btn"        id="exp-expert"       onclick="setExpertise('expert',event)">🟣 Expert</button>
+    </div>
+
+    <!-- Members grid -->
+    <div id="members-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;">
+      <div class="loader" style="grid-column:1/-1;text-align:center;padding:40px;">
+        <div class="spinner"></div> Loading members...
+      </div>
+    </div>
+
+    <div id="pagination" class="pagination" style="margin-top:20px;"></div>
+  </main>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+let currentSort     = 'reputation';
+let currentPage     = 1;
+let expertiseFilter = '';
+let searchTimeout;
+
+const expertiseColors = {
+  beginner:     '#10b981',
+  intermediate: '#f59e0b',
+  advanced:     '#ef4444',
+  expert:       '#7c3aed'
+};
+
+async function loadMembers(page = 1) {
+  currentPage = page;
+  const container = document.getElementById('members-grid');
+  container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;"><div class="spinner"></div></div>';
+
+  const search = document.getElementById('search-input').value.trim();
+  const params = new URLSearchParams({ sort: currentSort, page, limit: 24 });
+  if (search)          params.set('search',    search);
+  if (expertiseFilter) params.set('expertise', expertiseFilter);
+
+  try {
+    const data = await API.get(`/users?${params}`);
+    document.getElementById('member-count').textContent = `${data.total} member${data.total !== 1 ? 's' : ''}`;
+
+    // Update sidebar stats
+    document.getElementById('community-stats').innerHTML =
+      `<div>👥 Total members: <strong>${data.total}</strong></div>`;
+
+    if (!data.users || data.users.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">👥</div>
+          <h3>No members found</h3>
+          <p>Try a different search or filter</p>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = data.users.map(renderCard).join('');
+    renderPagination(data.pages, page);
+  } catch (err) {
+    container.innerHTML = `
+      <div class="alert alert-error" style="grid-column:1/-1;">
+        ⚠️ Failed to load members: ${err.message}
+      </div>`;
+  }
+}
+
+function renderCard(u) {
+  const color  = expertiseColors[u.expertise] || '#6b7280';
+  const initials = (u.username || '?')[0].toUpperCase();
+  const skills = (u.skills || []).slice(0, 4);
+  const extraSkills = (u.skills || []).length - 4;
+
+  return `
+  <a href="/profile?id=${u._id}" class="member-card">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <div class="avatar">${initials}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:15px;color:var(--navy,#1e3a5f);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          ${escHtml(u.username)}
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">
+          <span class="badge-pill" style="background:${color};">
+            ${(u.expertise || 'beginner').toUpperCase()}
+          </span>
+          ${u.role === 'admin'     ? '<span class="badge-pill" style="background:#f59e0b;color:#1e3a5f;">ADMIN</span>'     : ''}
+          ${u.role === 'moderator' ? '<span class="badge-pill" style="background:#7c3aed;">MOD</span>'                     : ''}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-size:18px;font-weight:700;color:var(--navy,#1e3a5f);">${u.reputation || 0}</div>
+        <div style="font-size:10px;color:var(--text-muted,#6b7280);">rep</div>
+      </div>
+    </div>
+
+    ${u.bio ? `
+      <p style="font-size:12px;color:var(--text-muted,#6b7280);margin-bottom:10px;
+        overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">
+        ${escHtml(u.bio)}
+      </p>` : ''}
+
+    ${skills.length > 0 ? `
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">
+        ${skills.map(s => `<span class="tag" style="font-size:11px;padding:2px 7px;">${escHtml(s)}</span>`).join('')}
+        ${extraSkills > 0 ? `<span style="font-size:11px;color:var(--text-muted,#6b7280);">+${extraSkills} more</span>` : ''}
+      </div>` : ''}
+
+    <div class="stats-row">
+      <span>❓ ${u.questionsCount || 0}</span>
+      <span>💬 ${u.answersCount   || 0}</span>
+      ${(u.badges || []).length > 0 ? `<span>🏅 ${u.badges.length}</span>` : ''}
+      <span style="margin-left:auto;font-size:11px;">
+        ${u.lastSeen ? 'Active ' + timeAgo(new Date(u.lastSeen)) : ''}
+      </span>
+    </div>
+  </a>`;
+}
+
+function renderPagination(pages, current) {
+  const el = document.getElementById('pagination');
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  let html = '';
+  for (let i = 1; i <= pages; i++) {
+    html += `<button class="page-btn ${i === current ? 'active' : ''}" onclick="loadMembers(${i})">${i}</button>`;
+  }
+  el.innerHTML = html;
+}
+
+function setSort(sort, e) {
+  e.preventDefault();
+  currentSort = sort;
+  document.querySelectorAll('.sidebar-link[id^="sort-"]').forEach(el => el.classList.remove('active'));
+  document.getElementById(`sort-${sort}`)?.classList.add('active');
+  loadMembers(1);
+}
+
+function setExpertise(level, e) {
+  e.preventDefault();
+  expertiseFilter = level;
+  // Update sidebar links
+  document.querySelectorAll('.sidebar-section .sidebar-link:not([id^="sort-"])').forEach(el => el.classList.remove('active'));
+  // Update top filter buttons
+  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+  const btnId = level ? `exp-${level}` : 'exp-all';
+  document.getElementById(btnId)?.classList.add('active');
+  loadMembers(1);
+}
+
+function timeAgo(date) {
+  const diff = Math.floor((Date.now() - date) / 1000);
+  if (diff < 60)     return 'just now';
+  if (diff < 3600)   return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400)  return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+document.getElementById('search-input').addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => loadMembers(1), 400);
+});
+
+loadMembers(1);
+</script>
+</body>
+</html>

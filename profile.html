@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile - SkillNet</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <a href="/" class="navbar-brand">
+    <img src="/images/logo.jpeg" alt="SkillNet">
+    <span>SkillNet</span>
+  </a>
+  <div class="navbar-links" id="nav-user-links"></div>
+</nav>
+
+<div style="max-width:960px;margin:32px auto;padding:0 16px;">
+  <div id="profile-container">
+    <div class="loader"><div class="spinner"></div> Loading profile...</div>
+  </div>
+</div>
+
+<!-- Edit Profile Modal - User Profile Management Module -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;">
+  <div class="card" style="width:540px;max-width:95vw;padding:28px;position:relative;max-height:90vh;overflow-y:auto;">
+    <button onclick="closeEditModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">✕</button>
+    <h2 style="margin-bottom:20px;font-family:var(--font-display);">Edit Profile</h2>
+    <div class="form-group">
+      <label class="form-label">Bio</label>
+      <textarea class="form-textarea" id="edit-bio" rows="3" placeholder="Tell the community about yourself..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Expertise Level</label>
+      <select class="form-input" id="edit-expertise">
+        <option value="beginner">Beginner</option>
+        <option value="intermediate">Intermediate</option>
+        <option value="advanced">Advanced</option>
+        <option value="expert">Expert</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Skills <span style="color:var(--text-muted);font-size:12px;">(comma separated)</span></label>
+      <input class="form-input" type="text" id="edit-skills" placeholder="JavaScript, Python, React...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Interests <span style="color:var(--text-muted);font-size:12px;">(comma separated)</span></label>
+      <input class="form-input" type="text" id="edit-interests" placeholder="Web Dev, AI, DevOps...">
+    </div>
+    <!-- User Profile Management Module - knowledge domains -->
+    <div class="form-group">
+      <label class="form-label">Knowledge Domains <span style="color:var(--text-muted);font-size:12px;">(comma separated)</span></label>
+      <input class="form-input" type="text" id="edit-knowledge" placeholder="Backend, Databases, Cloud...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Resume / Portfolio URL</label>
+      <input class="form-input" type="url" id="edit-resume" placeholder="https://your-portfolio.com">
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn" style="background:var(--cream);" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+const userId = getParam('id');
+const currentUser = API.getUser();
+let profileData = null;
+
+if (!userId) {
+  if (currentUser) window.location.href = `/profile?id=${currentUser.id}`;
+  else window.location.href = '/login';
+}
+
+const EXPERTISE_LEVELS = { beginner: 25, intermediate: 50, advanced: 75, expert: 100 };
+const EXPERTISE_COLORS = { beginner: '#10b981', intermediate: '#f59e0b', advanced: '#ef4444', expert: '#7c3aed' };
+
+async function loadProfile() {
+  try {
+    const token = API.getToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const res  = await fetch(`/api/users/${userId}`, { headers });
+    if (!res.ok) throw new Error('User not found');
+    const data = await res.json();
+    profileData = data;
+    renderProfile(data);
+  } catch (err) {
+    document.getElementById('profile-container').innerHTML = `<div class="alert alert-error">User not found. Please <a href="/register">register</a> or <a href="/login">login</a> again.</div>`;
+  }
+}
+
+function renderProfile({ user, questions, bookmarked }) {
+  const isOwnProfile = currentUser && currentUser.id === user._id;
+  const expertiseLevel = user.expertise || 'beginner';
+  const expertisePct = EXPERTISE_LEVELS[expertiseLevel] || 25;
+  const expertiseColor = EXPERTISE_COLORS[expertiseLevel] || '#10b981';
+
+  document.title = `${user.username} - SkillNet`;
+
+  // Determine active tab
+  const tab = getParam('tab') || 'questions';
+
+  document.getElementById('profile-container').innerHTML = `
+    <!-- Profile Header -->
+    <div class="profile-header" style="margin-bottom:20px;">
+      <div class="profile-avatar">${user.username[0].toUpperCase()}</div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <h1 style="font-size:26px;font-family:var(--font-display);">${escHtml(user.username)}</h1>
+          ${user.role === 'admin' ? '<span style="background:var(--gold);color:var(--navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">ADMIN</span>' : ''}
+          ${user.role === 'moderator' ? '<span style="background:#7c3aed;color:white;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">MODERATOR</span>' : ''}
+          ${user.isSuspended ? '<span style="background:var(--red);color:white;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">SUSPENDED</span>' : ''}
+          ${expertiseBadge(expertiseLevel)}
+        </div>
+        <p style="color:rgba(255,255,255,0.65);font-size:13px;margin-top:4px;">Member since ${new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+        ${user.bio ? `<p style="color:rgba(255,255,255,0.85);font-size:14px;margin-top:8px;">${escHtml(user.bio)}</p>` : ''}
+
+        <!-- Expertise bar -->
+        <div style="margin-top:10px;max-width:220px;">
+          <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:3px;">Expertise: ${expertiseLevel}</div>
+          <div class="expertise-bar"><div class="expertise-fill" style="width:${expertisePct}%;background:${expertiseColor};"></div></div>
+        </div>
+
+        <div class="profile-stats" style="margin-top:14px;">
+          <div class="profile-stat"><div class="profile-stat-num">${user.reputation || 0}</div><div class="profile-stat-label" style="color:rgba(255,255,255,0.6);">Reputation</div></div>
+          <div class="profile-stat"><div class="profile-stat-num">${user.questionsCount || 0}</div><div class="profile-stat-label" style="color:rgba(255,255,255,0.6);">Questions</div></div>
+          <div class="profile-stat"><div class="profile-stat-num">${user.answersCount || 0}</div><div class="profile-stat-label" style="color:rgba(255,255,255,0.6);">Answers</div></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${isOwnProfile ? `<button class="btn btn-outline" onclick="openEditModal()">✏️ Edit Profile</button>` : ''}
+        ${user.resumeUrl ? `<a href="${escHtml(user.resumeUrl)}" class="resume-link" target="_blank">📄 Portfolio / Resume</a>` : ''}
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="sort-tabs" style="margin-bottom:20px;">
+      <button class="sort-tab ${tab==='questions'?'active':''}" onclick="switchTab('questions')">Questions (${user.questionsCount||0})</button>
+      <button class="sort-tab ${tab==='bookmarks'?'active':''}" onclick="switchTab('bookmarks')">🔖 Bookmarks</button>
+      <button class="sort-tab ${tab==='badges'?'active':''}" onclick="switchTab('badges')">🏅 Badges</button>
+    </div>
+
+    <!-- Questions Tab -->
+    <div id="tab-questions" style="${tab==='questions'?'':'display:none'}">
+      ${questions.length === 0 ? `<div class="empty-state"><div class="icon">❓</div><h3>No questions yet</h3>${isOwnProfile?'<a href="/ask" class="btn btn-primary" style="margin-top:12px;">Ask First Question</a>':''}</div>` :
+        questions.map(q => `
+          <div style="border-bottom:1px solid var(--border);padding:14px 0;">
+            <a href="/question/${q._id}" style="font-size:15px;font-weight:600;color:var(--navy);">${escHtml(q.title)}</a>
+            <div style="display:flex;gap:12px;font-size:12px;color:var(--text-muted);margin-top:4px;flex-wrap:wrap;">
+              <span>▲ ${q.votes||0}</span>
+              <span>💬 ${q.answers?.length||0}</span>
+              <span>👁️ ${q.views||0}</span>
+              ${q.category ? `<a href="/?category=${encodeURIComponent(q.category)}" class="category-tag" style="font-size:11px;">${escHtml(q.category)}</a>` : ''}
+              <span>${timeAgo(q.createdAt)}</span>
+            </div>
+          </div>`).join('')}
+    </div>
+
+    <!-- Bookmarks Tab -->
+    <div id="tab-bookmarks" style="${tab==='bookmarks'?'':'display:none'}">
+      ${!bookmarked || bookmarked.length === 0 ? `<div class="empty-state"><div class="icon">🔖</div><h3>No bookmarks yet</h3><p>Bookmark questions you want to revisit</p></div>` :
+        bookmarked.map(q => `
+          <div style="border-bottom:1px solid var(--border);padding:14px 0;">
+            <a href="/question/${q._id}" style="font-size:15px;font-weight:600;color:var(--navy);">${escHtml(q.title)}</a>
+            <div style="display:flex;gap:12px;font-size:12px;color:var(--text-muted);margin-top:4px;">
+              <span>▲ ${q.votes||0}</span><span>💬 ${q.answers?.length||0}</span>
+              ${q.category ? `<a href="/?category=${encodeURIComponent(q.category)}" class="category-tag" style="font-size:11px;">${escHtml(q.category)}</a>` : ''}
+            </div>
+          </div>`).join('')}
+    </div>
+
+    <!-- Badges Tab -->
+    <div id="tab-badges" style="${tab==='badges'?'':'display:none'}">
+      <div class="card" style="padding:20px;">
+        <h3 style="margin-bottom:16px;">Badges & Achievements</h3>
+        ${!user.badges || user.badges.length === 0 ? `<p style="color:var(--text-muted);">No badges yet. Start participating to earn them!</p>` :
+          `<div class="badges-grid">${user.badges.map(b => `
+            <div class="badge-chip" title="${escHtml(b.description)}">
+              <span>${b.icon || '🏅'}</span>
+              <span>${escHtml(b.name)}</span>
+            </div>`).join('')}</div>`}
+
+        ${user.skills?.length > 0 ? `
+          <h4 style="margin-top:20px;margin-bottom:10px;font-size:14px;">🛠️ Skills</h4>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${user.skills.map(s => `<span class="tag">${escHtml(s)}</span>`).join('')}
+          </div>` : ''}
+
+        ${user.interests?.length > 0 ? `
+          <h4 style="margin-top:16px;margin-bottom:10px;font-size:14px;">💡 Interests</h4>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${user.interests.map(i => `<span class="tag" style="background:var(--cream-dark);color:var(--navy);">${escHtml(i)}</span>`).join('')}
+          </div>` : ''}
+
+        ${user.knowledgeDomains?.length > 0 ? `
+          <h4 style="margin-top:16px;margin-bottom:10px;font-size:14px;">🧠 Knowledge Domains</h4>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${user.knowledgeDomains.map(d => `<span class="domain-tag">${escHtml(d)}</span>`).join('')}
+          </div>` : ''}
+
+        ${user.moderatingCategories?.length > 0 ? `
+          <h4 style="margin-top:16px;margin-bottom:10px;font-size:14px;">🛡️ Moderating</h4>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${user.moderatingCategories.map(c => `<a href="/category/${encodeURIComponent(c)}" class="cat-moderator-badge">${escHtml(c)}</a>`).join('')}
+          </div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('#tab-questions, #tab-bookmarks, #tab-badges').forEach(el => el.style.display = 'none');
+  document.getElementById(`tab-${tab}`).style.display = 'block';
+  document.querySelectorAll('.sort-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function openEditModal() {
+  if (!profileData) return;
+  const { user } = profileData;
+  document.getElementById('edit-bio').value = user.bio || '';
+  document.getElementById('edit-expertise').value = user.expertise || 'beginner';
+  document.getElementById('edit-skills').value = (user.skills || []).join(', ');
+  document.getElementById('edit-interests').value = (user.interests || []).join(', ');
+  document.getElementById('edit-knowledge').value = (user.knowledgeDomains || []).join(', ');
+  document.getElementById('edit-resume').value = user.resumeUrl || '';
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+}
+
+async function saveProfile() {
+  const bio = document.getElementById('edit-bio').value;
+  const expertise = document.getElementById('edit-expertise').value;
+  const skills = document.getElementById('edit-skills').value;
+  const interests = document.getElementById('edit-interests').value;
+  const knowledgeDomains = document.getElementById('edit-knowledge').value;
+  const resumeUrl = document.getElementById('edit-resume').value;
+  try {
+    await API.put('/users/me/update', { bio, expertise, skills, interests, knowledgeDomains, resumeUrl });
+    showToast('Profile updated!', 'success');
+    closeEditModal();
+    await loadProfile();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+loadProfile();
+</script>
+</body>
+</html>

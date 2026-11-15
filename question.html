@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Question - SkillNet</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ===== QUESTION PAGE STYLES ===== */
+    .q-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .q-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1e2d4a;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+    .q-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+    .q-meta a { color: #2563eb; font-weight: 600; text-decoration: none; }
+    .q-body {
+      font-size: 15px;
+      line-height: 1.75;
+      color: #334155;
+      white-space: pre-wrap;
+      margin-bottom: 16px;
+    }
+    .code-block {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      margin-bottom: 14px;
+    }
+    .behavior-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .behavior-box {
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+    }
+    .behavior-box.expected { background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; }
+    .behavior-box.actual   { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+    .behavior-label { font-size: 10px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+    /* ===== THUMBS VOTING ===== */
+    .vote-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .thumb-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1.5px solid #e2e8f0;
+      background: #f8fafc;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: #475569;
+      transition: all 0.18s;
+      user-select: none;
+    }
+    .thumb-btn:hover { border-color: #94a3b8; background: #f1f5f9; }
+    .thumb-btn.liked   { background: #eff6ff; border-color: #3b82f6; color: #2563eb; }
+    .thumb-btn.disliked{ background: #fff1f2; border-color: #f43f5e; color: #e11d48; }
+    .thumb-btn .count  { font-size: 14px; font-weight: 700; }
+
+    /* ===== ANSWERS ===== */
+    .answers-header {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e2d4a;
+      margin: 28px 0 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .answer-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      transition: box-shadow 0.2s;
+    }
+    .answer-card.accepted {
+      border-left: 4px solid #22c55e;
+      background: #f0fdf4;
+    }
+    .accepted-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #22c55e;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+    .answer-body {
+      font-size: 14px;
+      line-height: 1.75;
+      color: #334155;
+      white-space: pre-wrap;
+      margin-bottom: 14px;
+    }
+    .answer-meta {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+    .answer-meta a { color: #2563eb; font-weight: 600; text-decoration: none; }
+
+    /* ===== ACCEPT BUTTON ===== */
+    .accept-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1.5px solid #22c55e;
+      background: transparent;
+      color: #16a34a;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .accept-btn:hover { background: #22c55e; color: white; }
+
+    /* ===== COMMENTS / THREADS ===== */
+    .comments-section {
+      margin-top: 14px;
+      border-top: 1px solid #f1f5f9;
+      padding-top: 12px;
+    }
+    .comment-item {
+      padding: 8px 0 8px 12px;
+      border-left: 2px solid #e2e8f0;
+      margin-bottom: 6px;
+    }
+    .comment-item.reply {
+      margin-left: 24px;
+      border-left-color: #cbd5e1;
+    }
+    .comment-item.reply2 {
+      margin-left: 48px;
+      border-left-color: #e2e8f0;
+    }
+    .comment-author-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 3px;
+    }
+    .comment-author {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1e2d4a;
+    }
+    .comment-time {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .comment-text {
+      font-size: 13px;
+      color: #475569;
+      line-height: 1.5;
+    }
+    .comment-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .comment-action-btn {
+      font-size: 11px;
+      color: #2563eb;
+      cursor: pointer;
+      font-weight: 600;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    .comment-action-btn:hover { text-decoration: underline; }
+    .comment-vote-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .mini-thumb {
+      cursor: pointer;
+      font-size: 12px;
+      color: #94a3b8;
+      background: none;
+      border: none;
+      padding: 0;
+      transition: color 0.15s;
+    }
+    .mini-thumb:hover { color: #2563eb; }
+
+    /* ===== REPLY FORM ===== */
+    .reply-form {
+      display: none;
+      margin-top: 8px;
+      margin-left: 24px;
+    }
+    .reply-form.open { display: flex; gap: 6px; }
+    .reply-input {
+      flex: 1;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.18s;
+    }
+    .reply-input:focus { border-color: #3b82f6; }
+    .reply-submit {
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ===== ADD COMMENT FORM ===== */
+    .add-comment-form {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .comment-input {
+      flex: 1;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.18s;
+    }
+    .comment-input:focus { border-color: #3b82f6; }
+    .comment-submit {
+      padding: 8px 18px;
+      border-radius: 20px;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1.5px solid #e2e8f0;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .comment-submit:hover { background: #2563eb; color: white; border-color: #2563eb; }
+
+    /* ===== POST ANSWER ===== */
+    .post-answer-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 28px;
+    }
+    .post-answer-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1e2d4a;
+      margin-bottom: 14px;
+    }
+    .answer-textarea {
+      width: 100%;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+      font-family: inherit;
+      box-sizing: border-box;
+      transition: border-color 0.18s;
+    }
+    .answer-textarea:focus { border-color: #3b82f6; }
+    .post-btn {
+      margin-top: 12px;
+      padding: 10px 24px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+    .post-btn:hover { background: #1d4ed8; }
+    .post-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* tags */
+    .tag-chip {
+      display: inline-block;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 2px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 4px;
+      text-decoration: none;
+    }
+    .cat-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .closed-banner {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 13px;
+      color: #92400e;
+      margin-bottom: 16px;
+    }
+    .login-prompt {
+      text-align: center;
+      padding: 20px;
+      color: #64748b;
+      font-size: 14px;
+    }
+    .login-prompt a {
+      color: #2563eb;
+      font-weight: 700;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/" class="navbar-brand">
+    <img src="/images/logo.jpeg" alt="SkillNet">
+    <span>SkillNet</span>
+  </a>
+  <div class="navbar-search">
+    <span class="search-icon">🔍</span>
+    <input type="text" placeholder="Search questions..." onkeydown="if(event.key==='Enter')window.location.href='/?search='+encodeURIComponent(this.value)">
+  </div>
+  <div class="navbar-links" id="nav-user-links"></div>
+</nav>
+
+<div style="max-width:860px;margin:0 auto;padding:24px 16px;" id="question-container">
+  <div class="loader"><div class="spinner"></div> Loading...</div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+const qId = location.pathname.split('/').pop();
+const currentUser = API.getUser();
+let questionData = null;
+
+async function loadQuestion() {
+  try {
+    const q = await API.get(`/questions/${qId}`);
+    questionData = q;
+    renderQuestion(q);
+  } catch (err) {
+    document.getElementById('question-container').innerHTML =
+      `<div style="padding:40px;text-align:center;color:#ef4444;">${err.message}</div>`;
+  }
+}
+
+/* =========================================================
+   RENDER QUESTION
+   ========================================================= */
+function renderQuestion(q) {
+  document.title = `${q.title} - SkillNet`;
+  const container = document.getElementById('question-container');
+
+  // sort: accepted first, then by likes desc
+  const activeAnswers = (q.answers || [])
+    .filter(a => !a.isDeleted)
+    .sort((a, b) => b.isAccepted - a.isAccepted || (b.upvotedBy?.length||0) - (a.upvotedBy?.length||0));
+
+  const isQAuthor = currentUser && currentUser.id === (q.author?._id || q.author?.toString?.() || q.author);
+
+  container.innerHTML = `
+    ${q.isClosed ? `<div class="closed-banner">🔒 Closed: ${escHtml(q.closedReason)}</div>` : ''}
+
+    <!-- QUESTION -->
+    <div class="q-card">
+      <div class="q-title">${escHtml(q.title)}</div>
+
+      <div class="q-meta">
+        ${q.category ? `<a href="/category/${encodeURIComponent(q.category)}" class="cat-chip">${CATEGORY_ICONS[q.category]||'📂'} ${escHtml(q.category)}</a>` : ''}
+        ${q.subject ? `<span style="background:#f8fafc;border:1px solid #e2e8f0;padding:2px 8px;border-radius:10px;">${escHtml(q.subject)}</span>` : ''}
+        <span>👁 ${q.views||0} views</span>
+        <span>🕐 ${timeAgo(q.createdAt)}</span>
+        <span>by <a href="/profile?id=${q.author?._id||q.author}">${escHtml(q.authorName)}</a></span>
+      </div>
+
+      <div class="q-body">${escHtml(q.content)}</div>
+
+      ${q.codeSnippet ? `<div class="code-block">${escHtml(q.codeSnippet)}</div>` : ''}
+
+      ${(q.expectedBehavior||q.actualBehavior) ? `
+        <div class="behavior-grid">
+          ${q.expectedBehavior ? `<div class="behavior-box expected"><div class="behavior-label">✅ EXPECTED</div>${escHtml(q.expectedBehavior)}</div>` : ''}
+          ${q.actualBehavior   ? `<div class="behavior-box actual"><div class="behavior-label">❌ ACTUAL</div>${escHtml(q.actualBehavior)}</div>` : ''}
+        </div>` : ''}
+
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+        ${(q.tags||[]).map(t=>`<a href="/?tag=${encodeURIComponent(t)}" class="tag-chip">#${escHtml(t)}</a>`).join('')}
+      </div>
+
+      <!-- Bookmark -->
+      ${currentUser ? `
+        <button class="thumb-btn ${(q.bookmarkedBy||[]).includes(currentUser.id)?'liked':''}"
+          id="bookmark-btn" onclick="toggleBookmark()" style="font-size:13px;">
+          🔖 <span id="bookmark-label">${(q.bookmarkedBy||[]).includes(currentUser.id)?'Bookmarked':'Bookmark'}</span>
+        </button>` : ''}
+    </div>
+
+    <!-- ANSWERS HEADER -->
+    <div class="answers-header">${activeAnswers.length} Answer${activeAnswers.length!==1?'s':''}</div>
+
+    <!-- ANSWERS -->
+    <div id="answers-list">
+      ${activeAnswers.map(a => renderAnswer(a, q, isQAuthor)).join('')}
+      ${activeAnswers.length===0 ? `
+        <div style="text-align:center;padding:40px;color:#94a3b8;">
+          <div style="font-size:40px;margin-bottom:8px;">💬</div>
+          <div style="font-weight:600;">No answers yet — be the first!</div>
+        </div>` : ''}
+    </div>
+
+    <!-- POST ANSWER -->
+    ${!q.isClosed ? `
+      <div class="post-answer-card">
+        <div class="post-answer-title">✍️ Your Answer</div>
+        ${currentUser ? `
+          <textarea class="answer-textarea" id="answer-content" rows="6"
+            placeholder="Write a clear, detailed answer. Share what you know!"></textarea>
+          <div style="display:flex;justify-content:flex-end;">
+            <button class="post-btn" onclick="submitAnswer()" id="post-btn">Post Answer</button>
+          </div>` : `
+          <div class="login-prompt">
+            <a href="/login">Log in</a> or <a href="/register">register</a> to post an answer.
+          </div>`}
+      </div>` : ''}
+  `;
+}
+
+/* =========================================================
+   RENDER SINGLE ANSWER
+   ========================================================= */
+function renderAnswer(a, q, isQAuthor) {
+  const likes    = (a.upvotedBy||[]).length;
+  const dislikes = (a.downvotedBy||[]).length;
+  const iLiked   = currentUser && (a.upvotedBy||[]).includes(currentUser.id);
+  const iDisliked= currentUser && (a.downvotedBy||[]).includes(currentUser.id);
+
+  const activeComments = (a.comments||[]).filter(c=>!c.isDeleted);
+  const rootComments   = activeComments.filter(c=>!c.parentComment);
+
+  return `
+    <div class="answer-card ${a.isAccepted?'accepted':''}" id="answer-${a._id}">
+      ${a.isAccepted ? `<div class="accepted-badge">✓ Accepted Answer</div>` : ''}
+
+      <div class="answer-body">${escHtml(a.content)}</div>
+
+      <div class="answer-meta">
+        answered by <a href="/profile?id=${a.author}">${escHtml(a.authorName)}</a>
+        · ${timeAgo(a.createdAt)}
+        ${a.lastEditedBy ? `<span style="font-style:italic;"> · edited by ${escHtml(a.lastEditedBy)}</span>` : ''}
+      </div>
+
+      <!-- 👍 👎 voting row -->
+      <div class="vote-row">
+        <button class="thumb-btn ${iLiked?'liked':''}" onclick="voteAnswer('${a._id}','up')" id="like-${a._id}">
+          👍 <span class="count" id="likes-${a._id}">${likes}</span>
+        </button>
+        <button class="thumb-btn ${iDisliked?'disliked':''}" onclick="voteAnswer('${a._id}','down')" id="dislike-${a._id}">
+          👎 <span class="count" id="dislikes-${a._id}">${dislikes}</span>
+        </button>
+        ${isQAuthor && !a.isAccepted ? `
+          <button class="accept-btn" onclick="acceptAnswer('${a._id}')">✓ Accept Answer</button>` : ''}
+      </div>
+
+      <!-- THREADED COMMENTS -->
+      <div class="comments-section" id="comments-${a._id}">
+        ${rootComments.map(c => renderComment(c, a._id, activeComments, 0)).join('')}
+      </div>
+
+      <!-- Add Comment -->
+      ${currentUser ? `
+        <div class="add-comment-form">
+          <input class="comment-input" id="cmt-input-${a._id}"
+            placeholder="Add a comment..."
+            onkeydown="if(event.key==='Enter')submitComment('${a._id}')">
+          <button class="comment-submit" onclick="submitComment('${a._id}')">Comment</button>
+        </div>` : ''}
+    </div>`;
+}
+
+/* =========================================================
+   RENDER COMMENT (recursive-style, depth-aware)
+   ========================================================= */
+function renderComment(c, answerId, allComments, depth) {
+  const depthClass = depth===0 ? 'comment-item' : depth===1 ? 'comment-item reply' : 'comment-item reply2';
+  const replies    = allComments.filter(r => r.parentComment && r.parentComment.toString() === c._id.toString());
+
+  return `
+    <div class="${depthClass}" id="cmt-${c._id}">
+      <div class="comment-author-line">
+        <span class="comment-author">${escHtml(c.authorName)}</span>
+        <span class="comment-time">${timeAgo(c.createdAt)}</span>
+        <span class="comment-vote-row">
+          <button class="mini-thumb" onclick="voteComment('${answerId}','${c._id}','up')" title="Helpful">👍</button>
+          <span id="cvotes-${c._id}" style="font-size:11px;color:#94a3b8;">${c.votes||0}</span>
+        </span>
+      </div>
+      <div class="comment-text">${escHtml(c.content)}</div>
+      ${currentUser && depth < 3 ? `
+        <div class="comment-actions">
+          <button class="comment-action-btn" onclick="toggleReplyForm('${c._id}','${answerId}')">↩ Reply</button>
+        </div>
+        <div class="reply-form" id="rf-${c._id}">
+          <input class="reply-input" id="ri-${c._id}"
+            placeholder="Reply to ${escHtml(c.authorName)}..."
+            onkeydown="if(event.key==='Enter')submitReply('${c._id}','${answerId}')">
+          <button class="reply-submit" onclick="submitReply('${c._id}','${answerId}')">Reply</button>
+        </div>` : ''}
+      ${replies.map(r => renderComment(r, answerId, allComments, depth+1)).join('')}
+    </div>`;
+}
+
+/* =========================================================
+   ACTIONS
+   ========================================================= */
+async function voteAnswer(aid, dir) {
+  if (!currentUser) { window.location.href = '/login'; return; }
+  try {
+    const data = await API.post(`/questions/${qId}/answers/${aid}/vote`, { direction: dir });
+    // update counts from fresh data
+    document.getElementById(`likes-${aid}`).textContent    = data.likes;
+    document.getElementById(`dislikes-${aid}`).textContent = data.dislikes;
+
+    const likeBtn    = document.getElementById(`like-${aid}`);
+    const dislikeBtn = document.getElementById(`dislike-${aid}`);
+    likeBtn.className    = `thumb-btn ${data.iLiked?'liked':''}`;
+    dislikeBtn.className = `thumb-btn ${data.iDisliked?'disliked':''}`;
+  } catch(err) { showToast(err.message, 'error'); }
+}
+
+async function acceptAnswer(aid) {
+  try {
+    await API.post(`/questions/${qId}/answers/${aid}/accept`, {});
+    showToast('Answer accepted! ✓', 'success');
+    loadQuestion();
+  } catch(err) { showToast(err.message, 'error'); }
+}
+
+async function toggleBookmark() {
+  if (!currentUser) { window.location.href = '/login'; return; }
+  try {
+    const data = await API.post(`/questions/${qId}/bookmark`, {});
+    const btn = document.getElementById('bookmark-btn');
+    const lbl = document.getElementById('bookmark-label');
+    btn.className = `thumb-btn ${data.bookmarked?'liked':''}`;
+    lbl.textContent = data.bookmarked ? 'Bookmarked' : 'Bookmark';
+    showToast(data.bookmarked ? 'Bookmarked! 🔖' : 'Bookmark removed', 'success');
+  } catch(err) { showToast(err.message, 'error'); }
+}
+
+async function submitAnswer() {
+  const content = document.getElementById('answer-content')?.value?.trim();
+  if (!content) { showToast('Please write an answer first', 'error'); return; }
+  const btn = document.getElementById('post-btn');
+  btn.disabled = true; btn.textContent = 'Posting...';
+  try {
+    await API.post(`/questions/${qId}/answers`, { content });
+    showToast('Answer posted! 🎉', 'success');
+    document.getElementById('answer-content').value = '';
+    loadQuestion();
+  } catch(err) {
+    showToast(err.message, 'error');
+    btn.disabled = false; btn.textContent = 'Post Answer';
+  }
+}
+
+async function submitComment(answerId) {
+  const input = document.getElementById(`cmt-input-${answerId}`);
+  const content = input?.value?.trim();
+  if (!content) return;
+  try {
+    await API.post(`/questions/${qId}/answers/${answerId}/comments`, { content });
+    input.value = '';
+    loadQuestion();
+  } catch(err) { showToast(err.message, 'error'); }
+}
+
+function toggleReplyForm(commentId, answerId) {
+  const rf = document.getElementById(`rf-${commentId}`);
+  if (!rf) return;
+  const isOpen = rf.classList.contains('open');
+  rf.classList.toggle('open', !isOpen);
+  if (!isOpen) document.getElementById(`ri-${commentId}`)?.focus();
+}
+
+async function submitReply(parentCommentId, answerId) {
+  const input = document.getElementById(`ri-${parentCommentId}`);
+  const content = input?.value?.trim();
+  if (!content) return;
+  try {
+    await API.post(`/questions/${qId}/answers/${answerId}/comments`, { content, parentComment: parentCommentId });
+    input.value = '';
+    loadQuestion();
+  } catch(err) { showToast(err.message, 'error'); }
+}
+
+async function voteComment(answerId, commentId, dir) {
+  if (!currentUser) { window.location.href = '/login'; return; }
+  try {
+    const data = await API.post(`/questions/${qId}/answers/${answerId}/comments/${commentId}/vote`, { direction: dir });
+    const el = document.getElementById(`cvotes-${commentId}`);
+    if (el) el.textContent = data.votes;
+  } catch(err) { showToast(err.message, 'error'); }
+}
+
+loadQuestion();
+</script>
+</body>
+</html>

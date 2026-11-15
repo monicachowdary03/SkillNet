@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkillNet - Academic Q&A Platform</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar-brand">
+    <img src="/images/logo.jpeg" alt="SkillNet">
+    <span>SkillNet</span>
+  </a>
+  <div class="navbar-search">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search-input" placeholder="Search questions, topics, tags...">
+  </div>
+  <div class="navbar-links" id="nav-user-links"></div>
+</nav>
+
+<div class="page-layout">
+  <!-- Left Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">Navigation</div>
+      <a href="/" class="sidebar-link active" id="link-home">
+        <span class="icon">🏠</span> Home
+      </a>
+      <a href="/?sort=unanswered" class="sidebar-link">
+        <span class="icon">❓</span> Unanswered
+      </a>
+      <a href="/?sort=trending" class="sidebar-link">
+        <span class="icon">🔥</span> Trending
+      </a>
+      <a href="/community" class="sidebar-link">
+        <span class="icon">👥</span> Community
+      </a>
+    </div>
+    <!-- Category-Based Content Module: sidebar category browsing -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Categories</div>
+      <div id="sidebar-categories">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main>
+    <div class="page-header">
+      <h1 class="page-title" id="page-title">All Questions</h1>
+      <a href="/ask" class="btn btn-primary">+ Ask Question</a>
+    </div>
+
+    <!-- Category-Based Content Module: filter by category chips -->
+    <div id="category-chips" class="category-filter-bar" style="display:none;"></div>
+
+    <div class="sort-tabs">
+      <button class="sort-tab active" data-sort="newest">Newest</button>
+      <button class="sort-tab" data-sort="votes">Most Voted</button>
+      <button class="sort-tab" data-sort="unanswered">Unanswered</button>
+      <button class="sort-tab" data-sort="trending">🔥 Trending</button>
+    </div>
+
+    <div id="questions-container">
+      <div class="loader"><div class="spinner"></div> Loading questions...</div>
+    </div>
+
+    <div id="pagination" class="pagination"></div>
+  </main>
+
+  <!-- Right Sidebar -->
+  <aside class="right-sidebar">
+    <div class="widget">
+      <div class="widget-header">🧩 About SkillNet</div>
+      <div class="widget-body">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">An enhanced Q&A platform with structured discussions, category browsing, skill-based profiles, and threaded comments.</p>
+        <a href="/register" class="btn btn-primary" style="width:100%;justify-content:center;">Join the Community</a>
+      </div>
+    </div>
+
+    <!-- Trending Questions Widget - Category-Based Content Module -->
+    <div class="widget">
+      <div class="widget-header">🔥 Trending Now</div>
+      <div class="widget-body" id="trending-widget">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <div class="widget">
+      <div class="widget-header">📌 Top Categories</div>
+      <div class="widget-body" id="top-categories-widget">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+let currentSort = new URLSearchParams(location.search).get('sort') || 'newest';
+let currentPage = 1;
+let currentCategory = getParam('category') || '';
+let currentTag = getParam('tag') || '';
+
+// Set active sort tab from URL
+document.querySelectorAll('.sort-tab').forEach(t => {
+  t.classList.toggle('active', t.dataset.sort === currentSort);
+});
+
+async function loadQuestions(page = 1) {
+  currentPage = page;
+  const container = document.getElementById('questions-container');
+  container.innerHTML = '<div class="loader"><div class="spinner"></div> Loading...</div>';
+
+  const search = document.getElementById('search-input').value;
+  const params = new URLSearchParams({
+    sort: currentSort, page, limit: 20,
+    ...(currentCategory && { category: currentCategory }),
+    ...(currentTag && { tag: currentTag }),
+    ...(search && { search }),
+  });
+
+  try {
+    const token = API.getToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const res  = await fetch(`/api/questions?${params}`, { headers });
+    const data = await res.json();
+    if (data.questions.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">🔍</div>
+          <h3>No questions found</h3>
+          <p>Be the first to ask a question!</p>
+          <a href="/ask" class="btn btn-primary" style="margin-top:12px;">Ask Question</a>
+        </div>`;
+      return;
+    }
+    container.innerHTML = `<div class="question-list">${data.questions.map(renderQuestion).join('')}</div>`;
+    renderPagination(data.pages, page);
+  } catch (err) {
+    container.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+}
+
+function renderQuestion(q) {
+  const answerCount = q.answers?.length || 0;
+  const hasAccepted = q.acceptedAnswer;
+  return `
+    <div class="question-item">
+      <div class="question-stats">
+        <div class="stat-box" title="Votes">
+          <span class="stat-num">${q.votes || 0}</span>
+          <span class="stat-label">votes</span>
+        </div>
+        <div class="stat-box ${hasAccepted ? 'accepted' : answerCount > 0 ? 'has-answers' : ''}" title="Answers">
+          <span class="stat-num">${answerCount}</span>
+          <span class="stat-label">ans</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted)">${q.views || 0} views</div>
+      </div>
+      <div class="question-content">
+        <a href="/question/${q._id}" class="question-title">${escHtml(q.title)}</a>
+        <div class="question-meta">
+          ${q.category ? `<a href="/category/${encodeURIComponent(q.category)}" class="category-tag">${CATEGORY_ICONS[q.category]||'📂'} ${escHtml(q.category)}</a>` : ''}
+          ${(q.tags || []).slice(0, 4).map(t => `<a href="/?tag=${encodeURIComponent(t)}" class="tag">${escHtml(t)}</a>`).join('')}
+          <span class="meta-text">
+            asked by <a href="/profile?id=${q.author}" class="meta-author">${escHtml(q.authorName || 'user')}</a>
+            · ${timeAgo(q.createdAt)}
+          </span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderPagination(pages, current) {
+  if (pages <= 1) { document.getElementById('pagination').innerHTML = ''; return; }
+  let html = '';
+  for (let i = 1; i <= pages; i++) {
+    html += `<button class="page-btn ${i === current ? 'active' : ''}" onclick="loadQuestions(${i})">${i}</button>`;
+  }
+  document.getElementById('pagination').innerHTML = html;
+}
+
+async function loadSidebars() {
+  try {
+    const res  = await fetch('/api/questions/meta/categories');
+    const cats = await res.json();
+
+    // Sidebar categories
+    const sidebar = document.getElementById('sidebar-categories');
+    sidebar.innerHTML = cats.slice(0, 12).map(c => `
+      <a href="/category/${encodeURIComponent(c._id)}" class="sidebar-link ${currentCategory === c._id ? 'active' : ''}">
+        <span class="icon">${c.icon || CATEGORY_ICONS[c._id] || '📂'}</span> ${escHtml(c._id)}
+        <span class="category-badge">${c.count}</span>
+      </a>`).join('');
+
+    // Top categories widget
+    document.getElementById('top-categories-widget').innerHTML = cats.slice(0, 6).map(c => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">
+        <a href="/category/${encodeURIComponent(c._id)}" style="color:var(--text);">
+          ${c.icon || CATEGORY_ICONS[c._id] || '📂'} ${escHtml(c._id)}
+        </a>
+        <span class="category-badge">${c.count}</span>
+      </div>`).join('');
+
+    // Category filter chips in main content (when browsing)
+    const chipsEl = document.getElementById('category-chips');
+    chipsEl.style.display = 'flex';
+    chipsEl.innerHTML = `<a href="/" class="category-filter-chip ${!currentCategory ? 'active' : ''}">All</a>` +
+      cats.slice(0, 8).map(c => `
+        <a href="/category/${encodeURIComponent(c._id)}" class="category-filter-chip ${currentCategory === c._id ? 'active' : ''}">
+          ${c.icon || CATEGORY_ICONS[c._id] || '📂'} ${escHtml(c._id)}
+        </a>`).join('');
+  } catch(e) {
+    document.getElementById('sidebar-categories').innerHTML = CATEGORIES.slice(0, 10).map(c =>
+      `<a href="/category/${encodeURIComponent(c)}" class="sidebar-link"><span class="icon">${CATEGORY_ICONS[c]||'📂'}</span> ${c}</a>`
+    ).join('');
+  }
+
+  // Trending widget
+  try {
+    const tRes    = await fetch('/api/questions/meta/trending');
+    const trending = await tRes.json();
+    document.getElementById('trending-widget').innerHTML = trending.map(q => `
+      <div class="trending-card">
+        <a href="/question/${q._id}">${escHtml(q.title)}</a>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+          ${CATEGORY_ICONS[q.category]||'📂'} ${escHtml(q.category||'General')} · ▲${q.votes||0}
+        </div>
+      </div>`).join('') || '<p style="font-size:13px;color:var(--text-muted);">No trending questions yet.</p>';
+  } catch(e) {}
+}
+
+// Sort tabs
+document.querySelectorAll('.sort-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.sort-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentSort = tab.dataset.sort;
+    loadQuestions(1);
+  });
+});
+
+// Search with debounce
+let searchTimeout;
+document.getElementById('search-input').addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => loadQuestions(1), 400);
+});
+
+// Update title
+if (currentCategory) {
+  document.getElementById('page-title').textContent = `${CATEGORY_ICONS[currentCategory]||'📂'} ${currentCategory}`;
+} else if (currentTag) {
+  document.getElementById('page-title').textContent = `🏷️ #${currentTag}`;
+}
+
+loadSidebars();
+loadQuestions(1);
+</script>
+</body>
+</html>
